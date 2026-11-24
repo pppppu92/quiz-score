@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>プロフィールクイズ得点集計</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap">
+<style>
+/* Layout: sticky header with tabs; input view = grid (questions x 6 tables) of tappable cells + bottom A/B/C pad; ranking view = ranked list */
+:root {
+  --bg: #dcefeb; --surface: #ffffff; --surface-2: #f2f8f7; --ink: #213b3a; --muted: #5c7876;
+  --line: #c4dfda; --teal: #2a8f87; --on-teal: #ffffff; --gold: #d8bb7c; --on-gold: #3b2d0f;
+  --ok: #23804f; --ok-bg: #e2f4ea; --ng: #b93e36; --ng-bg: #fbe7e5; --focus: #e0a526; --sel-bg: #fff6dd;
+  --font: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Hiragino Sans", "Yu Gothic", sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1e1d; --surface: #172b29; --surface-2: #1d3533; --ink: #e2f1ee; --muted: #94b1ad;
+  --line: #2a4643; --teal: #4fc0b6; --on-teal: #0b1a19; --gold: #d8bb7c; --on-gold: #2a1f08;
+  --ok: #67c995; --ok-bg: #173a2a; --ng: #ef8178; --ng-bg: #3e1f1c; --focus: #f0c158; --sel-bg: #3a3420; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0f1e1d; --surface: #172b29; --surface-2: #1d3533; --ink: #e2f1ee; --muted: #94b1ad;
+  --line: #2a4643; --teal: #4fc0b6; --on-teal: #0b1a19; --gold: #d8bb7c; --on-gold: #2a1f08;
+  --ok: #67c995; --ok-bg: #173a2a; --ng: #ef8178; --ng-bg: #3e1f1c; --focus: #f0c158; --sel-bg: #3a3420; color-scheme: dark }
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 16px; font-weight: 500; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface); }
+[hidden] { display: none !important; }
+button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulation; }
+button:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }
+.wrap { max-width: 1000px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--surface); border-bottom: 1px solid var(--line); }
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding-block: 12px 8px; }
+h1 { margin: 0; font-size: 1.25rem; font-weight: 900; letter-spacing: .02em; text-wrap: balance; flex: 1 1 auto; }
+.status { font-size: .8rem; padding: 4px 10px; border-radius: 999px; background: var(--surface-2); color: var(--ok); border: 1px solid var(--line); }
+.tabs { display: flex; gap: 6px; padding-bottom: 10px; }
+.tab { border: 0; background: transparent; padding: 8px 18px; border-radius: 999px; font-weight: 700; color: var(--muted); }
+.tab[aria-selected="true"] { background: var(--teal); color: var(--on-teal); }
+main { padding-block: 16px 48px; }
+main.with-pad { padding-bottom: calc(150px + env(safe-area-inset-bottom, 0px)); }
+.view { display: grid; gap: 14px; }
+.help { margin: 0; color: var(--muted); font-size: .9rem; line-height: 1.7; }
+.help b { color: var(--ink); }
+.grid-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; }
+table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabular-nums; min-width: 100%; }
+th, td { border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); text-align: center; padding: 0; }
+tr > :last-child { border-right: 0; }
+tfoot tr:last-child > * { border-bottom: 0; }
+thead th { background: var(--surface-2); font-size: .92rem; font-weight: 900; padding: 10px 4px; color: var(--ink); white-space: nowrap; }
+thead th.sub { color: var(--muted); font-size: .75rem; font-weight: 700; }
+thead th.cur { background: var(--gold); color: var(--on-gold); }
+.qcol { position: sticky; left: 0; z-index: 1; background: var(--surface); text-align: left; padding: 6px 10px; white-space: nowrap; }
+thead .qcol { background: var(--surface-2); z-index: 2; }
+.qcol .n { font-weight: 900; font-size: .95rem; }
+.qcol .c { display: block; color: var(--muted); font-size: .72rem; }
+.pt { font-size: .78rem; font-weight: 700; color: var(--on-gold); background: var(--gold); border-radius: 999px; padding: 1px 7px; display: inline-block; }
+.keycell { color: var(--teal); font-weight: 900; font-size: 1rem; padding: 0 6px; background: var(--surface-2); }
+.cell { width: 100%; min-width: 84px; height: 46px; border: 0; background: transparent; font-weight: 900; font-size: 1.25rem; border-radius: 0; display: block; }
+td.ok { background: var(--ok-bg); } td.ok .cell { color: var(--ok); }
+td.ng { background: var(--ng-bg); } td.ng .cell { color: var(--ng); }
+td.sel { box-shadow: inset 0 0 0 3px var(--focus); }
+td.sel:not(.ok):not(.ng) { background: var(--sel-bg); }
+tfoot th, tfoot td { background: var(--surface-2); padding: 8px 4px; font-weight: 900; }
+tfoot .qcol { background: var(--surface-2); font-size: .85rem; }
+.sum { font-size: 1.2rem; }
+.cnt { display: block; font-size: .7rem; color: var(--muted); font-weight: 500; }
+.rk { font-size: 1.05rem; }
+.rk.top { color: var(--on-gold); background: var(--gold); border-radius: 8px; padding: 0 8px; display: inline-block; }
+.tie { display: block; font-size: .68rem; color: var(--ng); font-weight: 700; }
+.tools { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; font-size: .9rem; color: var(--muted); }
+.tools label { display: inline-flex; align-items: center; gap: 8px; }
+.tools input[type="checkbox"] { width: 22px; height: 22px; accent-color: var(--teal); }
+.ghost { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 8px 14px; font-size: .9rem; }
+.danger { border-color: var(--ng); color: var(--ng); }
+.danger-fill { background: var(--ng); border-color: var(--ng); color: var(--surface); }
+/* bottom answer pad */
+.pad { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--surface); border-top: 1px solid var(--line); box-shadow: 0 -6px 20px rgba(0,0,0,.08);
+  padding: 10px max(16px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.pad-in { max-width: 1000px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.where { flex: 1 1 140px; min-width: 0; }
+.where b { display: block; font-size: 1.15rem; font-weight: 900; }
+.where span { font-size: .82rem; color: var(--muted); }
+.keys { display: flex; gap: 10px; flex-wrap: wrap; }
+.k { min-width: 84px; height: 64px; border-radius: 14px; border: 0; background: var(--teal); color: var(--on-teal); font-size: 1.8rem; font-weight: 900; }
+.k:active { transform: scale(.96); }
+.k.sub { min-width: 64px; background: var(--surface-2); color: var(--ink); border: 1px solid var(--line); font-size: .95rem; font-weight: 700; }
+.rank-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.rank { display: grid; grid-template-columns: 3.2em minmax(0, 1fr) auto; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 12px 16px; }
+.rank .no { font-size: 1.6rem; font-weight: 900; text-align: center; font-variant-numeric: tabular-nums; }
+.rank.top .no { color: var(--on-gold); background: var(--gold); border-radius: 12px; padding-block: 2px; }
+.rank .nm { font-weight: 700; font-size: 1.15rem; min-width: 0; overflow-wrap: anywhere; }
+.rank .sub { display: block; font-size: .8rem; color: var(--muted); font-weight: 500; }
+.rank .sc { font-size: 1.8rem; font-weight: 900; font-variant-numeric: tabular-nums; }
+.rank .sc small { font-size: .9rem; color: var(--muted); }
+.badge { display: inline-block; margin-left: 6px; font-size: .75rem; padding: 2px 8px; border-radius: 999px; background: var(--ng-bg); color: var(--ng); font-weight: 700; vertical-align: middle; }
+.empty { color: var(--muted); font-size: .9rem; }
+@media (max-width: 560px) { .k { min-width: 64px; height: 56px; } .k.sub { min-width: 52px; } }
+@media (prefers-reduced-motion: no-preference) { .tab { transition: background-color .12s, color .12s; } .k { transition: transform .06s; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="bar">
+      <h1>プロフィールクイズ 得点集計</h1>
+      <span class="status" id="status">このiPadに保存されます</span>
+    </div>
+    <div class="tabs" role="tablist">
+      <button class="tab" id="tab-input" role="tab" aria-selected="true">回答入力</button>
+      <button class="tab" id="tab-rank" role="tab" aria-selected="false">順位</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap with-pad" id="main">
+  <section class="view" id="view-input">
+    <p class="help">表のマスをタップしてから、下の <b>A・B・C</b> ボタンを押してください。押すと自動で次の問題へ進むので、1テーブル分（15問）を続けて入力できます。</p>
+    <div class="grid-wrap"><table id="grid"></table></div>
+    <div class="tools">
+      <label><input type="checkbox" id="showkey" checked> 正解の列と○×の色を表示</label>
+    </div>
+  </section>
+
+  <section class="view" id="view-rank" hidden>
+    <p class="help">回答を1問以上入力したテーブルだけを順位に入れます。1〜3位で同点のときは、代表者のじゃんけんで決めてください。</p>
+    <ol class="rank-list" id="ranks"></ol>
+    <div class="tools">
+      <button class="ghost danger" id="reset-all">全テーブルの回答を消す</button>
+      <span id="reset-confirm" hidden>全部消します。元に戻せません。
+        <button class="ghost danger-fill" id="reset-yes">全部消す</button>
+        <button class="ghost" id="reset-no">やめる</button></span>
+    </div>
+  </section>
+</main>
+
+<div class="pad" id="pad">
+  <div class="pad-in">
+    <div class="where"><b id="where-table"></b><span id="where-q"></span></div>
+    <div class="keys">
+      <button class="k" data-v="A">A</button>
+      <button class="k" data-v="B">B</button>
+      <button class="k" data-v="C">C</button>
+      <button class="k sub" id="k-clear">消す</button>
+      <button class="k sub" id="k-up">↑ 前</button>
+      <button class="k sub" id="k-down">↓ 次</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const Q = [
+  ["誕生｜同い年",1,"A"],["誕生｜新郎",1,"C"],["誕生｜新婦",1,"B"],["幼稚園｜新婦の夢",2,"C"],
+  ["小学校｜新婦の習い事",1,"A"],["小学校｜新郎の夢",2,"B"],["中学校｜新郎",1,"A"],["高校｜新郎の部活",1,"C"],
+  ["高校｜新婦の部活",2,"A"],["大学｜新郎",3,"B"],["大学｜新婦のバイト",1,"C"],["ふたり｜共通の趣味",1,"B"],
+  ["ふたり｜行きたい場所",2,"C"],["エピソード｜中学3年",3,"B"],["エピソード｜初ディズニー",3,"A"]
+];
+const TABLES = ["ワンパチ","カイリュー","メタモン","ミュウ","ポッチャマ","パモ"];
+const N = Q.length, T = TABLES.length;
+const MAX = Q.reduce((s, q) => s + q[1], 0);
+const KEY = "quiz-answers-6tables";
+const $ = id => document.getElementById(id);
+const ls = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } }
+};
+
+let answers = TABLES.map(() => Array(N).fill(""));
+const saved = ls.get(KEY, null);
+if (Array.isArray(saved)) saved.slice(0, T).forEach((col, t) => {
+  if (Array.isArray(col)) col.slice(0, N).forEach((a, i) => { if (["A","B","C"].includes(a)) answers[t][i] = a; });
+});
+let cur = { t: 0, i: 0 };
+let view = "input";
+$("showkey").checked = ls.get("quiz-showkey", true);
+
+const score = t => answers[t].reduce((s, a, i) => s + (a === Q[i][2] ? Q[i][1] : 0), 0);
+const answered = t => answers[t].filter(Boolean).length;
+function ranking() {
+  const list = TABLES.map((_, t) => t).filter(t => answered(t) > 0).map(t => ({ t, s: score(t) }));
+  list.forEach(r => { r.rank = 1 + list.filter(x => x.s > r.s).length; r.tied = list.filter(x => x.s === r.s).length > 1; });
+  return list.sort((a, b) => b.s - a.s);
+}
+function save() { $("status").textContent = ls.set(KEY, answers) ? "このiPadに保存しました" : "保存できませんでした（プライベートブラウズでは保存されません）"; }
+
+/* ---------- grid ---------- */
+const cells = [];
+function build() {
+  const head = document.createElement("thead");
+  head.innerHTML = `<tr><th class="qcol sub">問題</th><th class="sub">配点</th><th class="sub keycol">正解</th>` +
+    TABLES.map((n, t) => `<th id="h-${t}">${n}</th>`).join("") + `</tr>`;
+  const body = document.createElement("tbody");
+  TABLES.forEach(() => cells.push([]));
+  Q.forEach(([cat, pts, key], i) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<th class="qcol" scope="row"><span class="n">第${i + 1}問</span><span class="c">${cat}</span></th>` +
+      `<td style="padding:0 6px"><span class="pt">${pts}点</span></td><td class="keycell keycol">${key}</td>`;
+    TABLES.forEach((name, t) => {
+      const td = document.createElement("td");
+      const b = document.createElement("button");
+      b.className = "cell"; b.setAttribute("aria-label", `${name} 第${i + 1}問`);
+      b.onclick = () => { cur = { t, i }; paint(); };
+      td.append(b); tr.append(td); cells[t][i] = b;
+    });
+    body.append(tr);
+  });
+  const foot = document.createElement("tfoot");
+  foot.innerHTML = `<tr><th class="qcol">合計得点</th><td>${MAX}</td><td class="keycol"></td>${TABLES.map((_, t) => `<td id="sum-${t}"></td>`).join("")}</tr>` +
+                   `<tr><th class="qcol">暫定順位</th><td></td><td class="keycol"></td>${TABLES.map((_, t) => `<td id="rank-${t}"></td>`).join("")}</tr>`;
+  $("grid").append(head, body, foot);
+}
+function paint() {
+  const show = $("showkey").checked;
+  document.querySelectorAll(".keycol").forEach(el => el.hidden = !show);
+  TABLES.forEach((_, t) => {
+    $("h-" + t).className = t === cur.t ? "cur" : "";
+    answers[t].forEach((a, i) => {
+      const b = cells[t][i]; b.textContent = a;
+      const cls = [];
+      if (show && a) cls.push(a === Q[i][2] ? "ok" : "ng");
+      if (view === "input" && t === cur.t && i === cur.i) cls.push("sel");
+      b.parentElement.className = cls.join(" ");
+    });
+  });
+  const rk = {}; ranking().forEach(r => rk[r.t] = r);
+  TABLES.forEach((_, t) => {
+    $("sum-" + t).innerHTML = `<span class="sum">${score(t)}</span><span class="cnt">入力 ${answered(t)}/${N}</span>`;
+    const r = rk[t];
+    $("rank-" + t).innerHTML = r ? `<span class="rk${r.rank <= 3 ? " top" : ""}">${r.rank}位</span>${r.tied && r.rank <= 3 ? '<span class="tie">同点</span>' : ""}` : `<span class="cnt">－</span>`;
+  });
+  $("where-table").textContent = `${TABLES[cur.t]}　第${cur.i + 1}問`;
+  $("where-q").textContent = `${Q[cur.i][0]}（${Q[cur.i][1]}点）　いまの回答：${answers[cur.t][cur.i] || "未入力"}`;
+  if (view === "rank") paintRanks();
+}
+function paintRanks() {
+  const list = ranking(), ol = $("ranks"); ol.innerHTML = "";
+  if (!list.length) { const li = document.createElement("li"); li.className = "empty"; li.textContent = "まだ回答が入力されていません。「回答入力」で入力すると、ここに順位が出ます。"; ol.append(li); return; }
+  list.forEach(r => {
+    const li = document.createElement("li"); li.className = "rank" + (r.rank <= 3 ? " top" : "");
+    li.innerHTML = `<span class="no">${r.rank}</span><span class="nm">${TABLES[r.t]}` +
+      (r.tied && r.rank <= 3 ? `<span class="badge">同点：じゃんけん</span>` : "") +
+      `<span class="sub">入力 ${answered(r.t)}/${N}問</span></span><span class="sc">${r.s}<small> / ${MAX}点</small></span>`;
+    ol.append(li);
+  });
+}
+function move(d) {
+  let { t, i } = cur; i += d;
+  if (i >= N) { if (t < T - 1) { t += 1; i = 0; } else i = N - 1; }
+  if (i < 0) { if (t > 0) { t -= 1; i = N - 1; } else i = 0; }
+  cur = { t, i }; paint();
+  cells[t][i].scrollIntoView({ block: "nearest", inline: "nearest" });
+}
+function pick(v) { answers[cur.t][cur.i] = v; save(); move(1); }
+
+/* ---------- controls ---------- */
+document.querySelectorAll(".k[data-v]").forEach(b => b.onclick = () => pick(b.dataset.v));
+$("k-clear").onclick = () => { answers[cur.t][cur.i] = ""; save(); paint(); };
+$("k-up").onclick = () => move(-1);
+$("k-down").onclick = () => move(1);
+document.addEventListener("keydown", e => {   // optional hardware keyboard
+  if (view !== "input" || e.metaKey || e.ctrlKey || e.altKey) return;
+  const k = e.key.toUpperCase();
+  if (["A","B","C"].includes(k)) { e.preventDefault(); pick(k); }
+  else if (k === "ARROWDOWN" || k === "ENTER") { e.preventDefault(); move(1); }
+  else if (k === "ARROWUP") { e.preventDefault(); move(-1); }
+  else if (k === "ARROWRIGHT" && cur.t < T - 1) { e.preventDefault(); cur.t += 1; paint(); }
+  else if (k === "ARROWLEFT" && cur.t > 0) { e.preventDefault(); cur.t -= 1; paint(); }
+  else if (k === "BACKSPACE" || k === "DELETE") { e.preventDefault(); answers[cur.t][cur.i] = ""; save(); paint(); }
+});
+function show(v) {
+  view = v;
+  $("view-input").hidden = v !== "input"; $("view-rank").hidden = v !== "rank";
+  $("pad").hidden = v !== "input"; $("main").classList.toggle("with-pad", v === "input");
+  $("tab-input").setAttribute("aria-selected", v === "input"); $("tab-rank").setAttribute("aria-selected", v === "rank");
+  hideReset(); paint();
+}
+$("tab-input").onclick = () => show("input");
+$("tab-rank").onclick = () => show("rank");
+$("showkey").onchange = () => { ls.set("quiz-showkey", $("showkey").checked); paint(); };
+function hideReset() { $("reset-confirm").hidden = true; $("reset-all").hidden = false; }
+$("reset-all").onclick = () => { $("reset-all").hidden = true; $("reset-confirm").hidden = false; };
+$("reset-no").onclick = hideReset;
+$("reset-yes").onclick = () => { answers = TABLES.map(() => Array(N).fill("")); save(); cur = { t: 0, i: 0 }; hideReset(); paint(); };
+
+build();
+paint();
+</script>
+</body>
+</html>
