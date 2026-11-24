@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap">
 <style>
-/* Layout: sticky header with tabs; input view = grid (questions x 6 tables) of tappable cells + bottom A/B/C pad; ranking view = ranked list */
+/* Layout: sticky header with tabs; input view = grid (6 tables x questions) of tappable cells + bottom A/B/C pad; ranking view = ranked list */
 :root {
   --bg: #dcefeb; --surface: #ffffff; --surface-2: #f2f8f7; --ink: #213b3a; --muted: #5c7876;
   --line: #c4dfda; --teal: #2a8f87; --on-teal: #ffffff; --gold: #d8bb7c; --on-gold: #3b2d0f;
@@ -30,7 +30,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 [hidden] { display: none !important; }
 button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulation; }
 button:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }
-.wrap { max-width: 1000px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1400px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 header { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--surface); border-bottom: 1px solid var(--line); }
 .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding-block: 12px 8px; }
 h1 { margin: 0; font-size: 1.25rem; font-weight: 900; letter-spacing: .02em; text-wrap: balance; flex: 1 1 auto; }
@@ -48,22 +48,28 @@ table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabu
 th, td { border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); text-align: center; padding: 0; }
 tr > :last-child { border-right: 0; }
 tfoot tr:last-child > * { border-bottom: 0; }
-thead th { background: var(--surface-2); font-size: .92rem; font-weight: 900; padding: 10px 4px; color: var(--ink); white-space: nowrap; }
+thead th { background: var(--surface-2); font-size: .92rem; font-weight: 900; padding: 8px 4px; color: var(--ink); white-space: nowrap; vertical-align: top; }
+thead th .n { display: block; }
+thead th .c { display: block; margin-top: 4px; color: var(--muted); font-size: .66rem; font-weight: 700; line-height: 1.35; white-space: normal; }
+thead th.cur .c { color: var(--on-gold); }
 thead th.sub { color: var(--muted); font-size: .75rem; font-weight: 700; }
 thead th.cur { background: var(--gold); color: var(--on-gold); }
 .qcol { position: sticky; left: 0; z-index: 1; background: var(--surface); text-align: left; padding: 6px 10px; white-space: nowrap; }
 thead .qcol { background: var(--surface-2); z-index: 2; }
 .qcol .n { font-weight: 900; font-size: .95rem; }
-.qcol .c { display: block; color: var(--muted); font-size: .72rem; }
+.qcol.cur { background: var(--gold); color: var(--on-gold); }
+.sumcol, .rankcol { position: sticky; z-index: 1; background: var(--surface-2); min-width: 64px; }
+.rankcol { right: 0; width: 64px; } .sumcol { right: 64px; border-left: 1px solid var(--line); }
+thead .sumcol, thead .rankcol { z-index: 2; }
 .pt { font-size: .78rem; font-weight: 700; color: var(--on-gold); background: var(--gold); border-radius: 999px; padding: 1px 7px; display: inline-block; }
 .keycell { color: var(--teal); font-weight: 900; font-size: 1rem; padding: 0 6px; background: var(--surface-2); }
-.cell { width: 100%; min-width: 84px; height: 46px; border: 0; background: transparent; font-weight: 900; font-size: 1.25rem; border-radius: 0; display: block; }
+.cell { width: 100%; min-width: 58px; height: 52px; border: 0; background: transparent; font-weight: 900; font-size: 1.25rem; border-radius: 0; display: block; }
 td.ok { background: var(--ok-bg); } td.ok .cell { color: var(--ok); }
 td.ng { background: var(--ng-bg); } td.ng .cell { color: var(--ng); }
 td.sel { box-shadow: inset 0 0 0 3px var(--focus); }
 td.sel:not(.ok):not(.ng) { background: var(--sel-bg); }
-tfoot th, tfoot td { background: var(--surface-2); padding: 8px 4px; font-weight: 900; }
-tfoot .qcol { background: var(--surface-2); font-size: .85rem; }
+tbody .sumcol, tbody .rankcol { padding: 4px; font-weight: 900; }
+.keyrow th, .keyrow td { background: var(--surface-2); }
 .sum { font-size: 1.2rem; }
 .cnt { display: block; font-size: .7rem; color: var(--muted); font-weight: 500; }
 .rk { font-size: 1.05rem; }
@@ -78,7 +84,7 @@ tfoot .qcol { background: var(--surface-2); font-size: .85rem; }
 /* bottom answer pad */
 .pad { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--surface); border-top: 1px solid var(--line); box-shadow: 0 -6px 20px rgba(0,0,0,.08);
   padding: 10px max(16px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
-.pad-in { max-width: 1000px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.pad-in { max-width: 1400px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
 .where { flex: 1 1 140px; min-width: 0; }
 .where b { display: block; font-size: 1.15rem; font-weight: 900; }
 .where span { font-size: .82rem; color: var(--muted); }
@@ -116,7 +122,7 @@ tfoot .qcol { background: var(--surface-2); font-size: .85rem; }
 
 <main class="wrap with-pad" id="main">
   <section class="view" id="view-input">
-    <p class="help">表のマスをタップしてから、下の <b>A・B・C</b> ボタンを押してください。押すと自動で次の問題へ進むので、1テーブル分（15問）を続けて入力できます。</p>
+    <p class="help">表のマスをタップしてから、下の <b>A・B・C</b> ボタンを押してください。押すと自動で次のテーブルへ進むので、1問分（6テーブル）を続けて入力できます。</p>
     <div class="grid-wrap"><table id="grid"></table></div>
     <div class="tools">
       <label><input type="checkbox" id="showkey" checked> 正解の列と○×の色を表示</label>
@@ -184,37 +190,41 @@ function ranking() {
 }
 function save() { $("status").textContent = ls.set(KEY, answers) ? "このiPadに保存しました" : "保存できませんでした（プライベートブラウズでは保存されません）"; }
 
-/* ---------- grid ---------- */
+/* ---------- grid (rows = tables, columns = questions) ---------- */
 const cells = [];
 function build() {
   const head = document.createElement("thead");
-  head.innerHTML = `<tr><th class="qcol sub">問題</th><th class="sub">配点</th><th class="sub keycol">正解</th>` +
-    TABLES.map((n, t) => `<th id="h-${t}">${n}</th>`).join("") + `</tr>`;
+  head.innerHTML = `<tr><th class="qcol sub">テーブル</th>` +
+    Q.map(([cat, pts], i) => `<th id="h-${i}"><span class="n">第${i + 1}問</span><span class="pt">${pts}点</span><span class="c">${cat.replace("｜", "<br>")}</span></th>`).join("") +
+    `<th class="sumcol sub">合計<span class="cnt">/${MAX}点</span></th><th class="rankcol sub">順位</th></tr>`;
   const body = document.createElement("tbody");
-  TABLES.forEach(() => cells.push([]));
-  Q.forEach(([cat, pts, key], i) => {
+  const keyrow = document.createElement("tr");
+  keyrow.className = "keyrow keycol";
+  keyrow.innerHTML = `<th class="qcol" scope="row"><span class="n">正解</span></th>` +
+    Q.map(q => `<td class="keycell">${q[2]}</td>`).join("") + `<td class="sumcol"></td><td class="rankcol"></td>`;
+  body.append(keyrow);
+  TABLES.forEach((name, t) => {
+    cells.push([]);
     const tr = document.createElement("tr");
-    tr.innerHTML = `<th class="qcol" scope="row"><span class="n">第${i + 1}問</span><span class="c">${cat}</span></th>` +
-      `<td style="padding:0 6px"><span class="pt">${pts}点</span></td><td class="keycell keycol">${key}</td>`;
-    TABLES.forEach((name, t) => {
+    tr.innerHTML = `<th class="qcol" scope="row" id="t-${t}"><span class="n">${name}</span></th>`;
+    Q.forEach((_, i) => {
       const td = document.createElement("td");
       const b = document.createElement("button");
       b.className = "cell"; b.setAttribute("aria-label", `${name} 第${i + 1}問`);
       b.onclick = () => { cur = { t, i }; paint(); };
       td.append(b); tr.append(td); cells[t][i] = b;
     });
+    tr.insertAdjacentHTML("beforeend", `<td class="sumcol" id="sum-${t}"></td><td class="rankcol" id="rank-${t}"></td>`);
     body.append(tr);
   });
-  const foot = document.createElement("tfoot");
-  foot.innerHTML = `<tr><th class="qcol">合計得点</th><td>${MAX}</td><td class="keycol"></td>${TABLES.map((_, t) => `<td id="sum-${t}"></td>`).join("")}</tr>` +
-                   `<tr><th class="qcol">暫定順位</th><td></td><td class="keycol"></td>${TABLES.map((_, t) => `<td id="rank-${t}"></td>`).join("")}</tr>`;
-  $("grid").append(head, body, foot);
+  $("grid").append(head, body);
 }
 function paint() {
   const show = $("showkey").checked;
   document.querySelectorAll(".keycol").forEach(el => el.hidden = !show);
+  Q.forEach((_, i) => $("h-" + i).className = view === "input" && i === cur.i ? "cur" : "");
   TABLES.forEach((_, t) => {
-    $("h-" + t).className = t === cur.t ? "cur" : "";
+    $("t-" + t).className = "qcol" + (view === "input" && t === cur.t ? " cur" : "");
     answers[t].forEach((a, i) => {
       const b = cells[t][i]; b.textContent = a;
       const cls = [];
@@ -229,7 +239,7 @@ function paint() {
     const r = rk[t];
     $("rank-" + t).innerHTML = r ? `<span class="rk${r.rank <= 3 ? " top" : ""}">${r.rank}位</span>${r.tied && r.rank <= 3 ? '<span class="tie">同点</span>' : ""}` : `<span class="cnt">－</span>`;
   });
-  $("where-table").textContent = `${TABLES[cur.t]}　第${cur.i + 1}問`;
+  $("where-table").textContent = `第${cur.i + 1}問　${TABLES[cur.t]}`;
   $("where-q").textContent = `${Q[cur.i][0]}（${Q[cur.i][1]}点）　いまの回答：${answers[cur.t][cur.i] || "未入力"}`;
   if (view === "rank") paintRanks();
 }
@@ -244,10 +254,10 @@ function paintRanks() {
     ol.append(li);
   });
 }
-function move(d) {
-  let { t, i } = cur; i += d;
-  if (i >= N) { if (t < T - 1) { t += 1; i = 0; } else i = N - 1; }
-  if (i < 0) { if (t > 0) { t -= 1; i = N - 1; } else i = 0; }
+function move(d) {   // next table within the same question, then the next question
+  let { t, i } = cur; t += d;
+  if (t >= T) { if (i < N - 1) { i += 1; t = 0; } else t = T - 1; }
+  if (t < 0) { if (i > 0) { i -= 1; t = T - 1; } else t = 0; }
   cur = { t, i }; paint();
   cells[t][i].scrollIntoView({ block: "nearest", inline: "nearest" });
 }
@@ -260,12 +270,12 @@ $("k-up").onclick = () => move(-1);
 $("k-down").onclick = () => move(1);
 document.addEventListener("keydown", e => {   // optional hardware keyboard
   if (view !== "input" || e.metaKey || e.ctrlKey || e.altKey) return;
-  const k = e.key.toUpperCase();
+  const k = ({ "1": "A", "2": "B", "3": "C" })[e.key] || e.key.toUpperCase();   // 1/2/3 also enter A/B/C
   if (["A","B","C"].includes(k)) { e.preventDefault(); pick(k); }
   else if (k === "ARROWDOWN" || k === "ENTER") { e.preventDefault(); move(1); }
   else if (k === "ARROWUP") { e.preventDefault(); move(-1); }
-  else if (k === "ARROWRIGHT" && cur.t < T - 1) { e.preventDefault(); cur.t += 1; paint(); }
-  else if (k === "ARROWLEFT" && cur.t > 0) { e.preventDefault(); cur.t -= 1; paint(); }
+  else if (k === "ARROWRIGHT" && cur.i < N - 1) { e.preventDefault(); cur.i += 1; paint(); }
+  else if (k === "ARROWLEFT" && cur.i > 0) { e.preventDefault(); cur.i -= 1; paint(); }
   else if (k === "BACKSPACE" || k === "DELETE") { e.preventDefault(); answers[cur.t][cur.i] = ""; save(); paint(); }
 });
 function show(v) {
